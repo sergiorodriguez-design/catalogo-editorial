@@ -1,0 +1,40 @@
+<header>
+  <div class="topbar">
+    <h1 class="logo">📚 Catálogo Editorial</h1>
+
+    <div class="actions">
+      <button id="viewToggle" class="btn" title="Cambiar rejilla/lista">🗂️ Vista</button>
+      <button id="themeToggle" class="btn" title="Modo claro/oscuro">🌓 Tema</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <input id="search" type="text" placeholder="Buscar título o autor…" />
+    <select id="idiomaFilter"><option value="">Idioma</option></select>
+    <select id="anioFilter"><option value="">Año</option></select>
+  </div>
+</header>
+
+<main>
+  <div id="catalogo" class="grid"></div>
+  <div id="sentinel" class="sentinel">
+    <div class="spinner"></div>
+  </div>
+</main>
+
+<!-- Modal de detalles -->
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+  <div class="modal-content">
+    <button id="closeModal" class="close" aria-label="Cerrar">✕</button>
+    <div class="modal-body">
+      <img id="modalImg" src="" alt="">
+      <div class="modal-text">
+        <h2 id="modalTitulo"></h2>
+        <p class="autor" id="modalAutor"></p>
+        <p class="editorial" id="modalEditorial"></p>
+        <p class="descripcion" id="modalDescripcion"></p>
+        <p class="precio" id="modalPrecio"></p>
+      </div>
+    </div>
+  </div>
+</div>
