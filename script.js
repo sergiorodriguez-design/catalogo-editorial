@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // URL de la hoja principal
   const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzTLQAi1kX_H_ZfonV0s6LHuaG7WoCNuudNSuDtR8Sqym96ItIb0NKScuCAccxlSWqSQh1LH7dUeg0/pub?gid=1407754531&single=true&output=csv";
+  // URL de la nueva hoja "Hoja 1" (cambia el gid por el de Hoja 1)
+  const CSV_URL_HOJA1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzTLQAi1kX_H_ZfonV0s6LHuaG7WoCNuudNSuDtR8Sqym96ItIb0NKScuCAccxlSWqSQh1LH7dUeg0/pub?gid=0&single=true&output=csv";
   const PAGE_SIZE = 24;
 
   const catalogo = document.getElementById("catalogo");
@@ -13,10 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeModal = document.getElementById("closeModal");
 
   let allBooks = [];
+  let hoja1Data = [];
+  let mergedBooks = [];
   let filtered = [];
   let page = 0;
   let observer;
   let view = localStorage.getItem('catalog_view') || 'grid';
+  let categoriasCP = {};
 
   // === Tema ===
   initTheme();
@@ -67,19 +73,64 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.appendChild(papa);
 
   async function loadData() {
+    // Leer hoja principal
     const res = await fetch(CSV_URL, { cache: 'no-cache' });
     const csv = await res.text();
     const parsed = Papa.parse(csv, { header: true }).data;
-
     allBooks = parsed
       .map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k.trim(), (v || '').toString().trim()])))
-      .filter(b => b['titulo']);
-    filtered = [...allBooks];
+      .filter(b => b['ISBN'] || b['isbn'] || b['titulo']);
 
-    renderFilters(allBooks);
+    // Leer Hoja 1
+    const resHoja1 = await fetch(CSV_URL_HOJA1, { cache: 'no-cache' });
+    const csvHoja1 = await resHoja1.text();
+    hoja1Data = Papa.parse(csvHoja1, { header: true }).data
+      .map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k.trim(), (v || '').toString().trim()])));
+
+    // Cruce por ISBN
+    const hoja1PorISBN = {};
+    hoja1Data.forEach(row => {
+      const isbn = row['ISBN'] || row['isbn'];
+      if (isbn) hoja1PorISBN[isbn] = row;
+    });
+
+    mergedBooks = allBooks.map(book => {
+      const isbn = book['ISBN'] || book['isbn'];
+      if (isbn && hoja1PorISBN[isbn]) {
+        return { ...book, ...hoja1PorISBN[isbn] };
+      }
+      return book;
+    });
+    filtered = [...mergedBooks];
+
+    // Crear categorías por CP
+    categoriasCP = {};
+    hoja1Data.forEach(row => {
+      const cp = row['CP'];
+      const isbn = row['ISBN'] || row['isbn'];
+      if (cp && isbn) {
+        if (!categoriasCP[cp]) categoriasCP[cp] = [];
+        categoriasCP[cp].push(isbn);
+      }
+    });
+
+    renderFilters(mergedBooks);
     resetAndRender();
     setupInfiniteScroll();
     bindUI();
+    renderCategoriasCP();
+  }
+  // Renderizar categorías por certificados de profesionalidad (CP)
+  function renderCategoriasCP() {
+    const cpContainer = document.getElementById('categoriasCP');
+    if (!cpContainer) return;
+    cpContainer.innerHTML = '';
+    Object.keys(categoriasCP).forEach(cp => {
+      const div = document.createElement('div');
+      div.className = 'cp-categoria';
+      div.innerHTML = `<h4>${cp}</h4><ul>${categoriasCP[cp].map(isbn => `<li>${isbn}</li>`).join('')}</ul>`;
+      cpContainer.appendChild(div);
+    });
   }
 
   function renderFilters(books) {
