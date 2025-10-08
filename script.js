@@ -1,8 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Depuración: comprobar si el botón existe
+  if (document.getElementById('categoriasCPBtn')) {
+    console.log('Botón Categorías CP encontrado en el DOM');
+  } else {
+    console.warn('Botón Categorías CP NO encontrado en el DOM');
+  }
+  const categoriasCPBtn = document.getElementById('categoriasCPBtn');
+  const cpContainer = document.getElementById('categoriasCP');
+  // Mostrar/ocultar categorías CP al hacer clic en el botón
+  if (categoriasCPBtn && cpContainer) {
+    categoriasCPBtn.addEventListener('click', () => {
+      cpContainer.style.display = (cpContainer.style.display === 'none' || !cpContainer.style.display) ? 'block' : 'none';
+    });
+    // Ocultar por defecto
+    cpContainer.style.display = 'none';
+  }
   // URL de la hoja principal
   const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzTLQAi1kX_H_ZfonV0s6LHuaG7WoCNuudNSuDtR8Sqym96ItIb0NKScuCAccxlSWqSQh1LH7dUeg0/pub?gid=1407754531&single=true&output=csv";
-  // URL de la nueva hoja "Hoja 1" (cambia el gid por el de Hoja 1)
-  const CSV_URL_HOJA1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzTLQAi1kX_H_ZfonV0s6LHuaG7WoCNuudNSuDtR8Sqym96ItIb0NKScuCAccxlSWqSQh1LH7dUeg0/pub?gid=0&single=true&output=csv";
+  // URL de la nueva hoja "Hoja 1" con el gid correcto
+  const CSV_URL_HOJA1 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQzTLQAi1kX_H_ZfonV0s6LHuaG7WoCNuudNSuDtR8Sqym96ItIb0NKScuCAccxlSWqSQh1LH7dUeg0/pub?gid=111084286&single=true&output=csv";
   const PAGE_SIZE = 24;
 
   const catalogo = document.getElementById("catalogo");
@@ -87,30 +103,37 @@ document.addEventListener('DOMContentLoaded', () => {
     hoja1Data = Papa.parse(csvHoja1, { header: true }).data
       .map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k.trim(), (v || '').toString().trim()])));
 
-    // Cruce por ISBN
+    // Función para normalizar ISBN
+    function normalizeISBN(isbn) {
+      return (isbn || '').replace(/[-\s]/g, '').toLowerCase();
+    }
+
+    // Cruce por ISBN normalizado
     const hoja1PorISBN = {};
     hoja1Data.forEach(row => {
       const isbn = row['ISBN'] || row['isbn'];
-      if (isbn) hoja1PorISBN[isbn] = row;
+      if (isbn) hoja1PorISBN[normalizeISBN(isbn)] = row;
     });
 
     mergedBooks = allBooks.map(book => {
       const isbn = book['ISBN'] || book['isbn'];
-      if (isbn && hoja1PorISBN[isbn]) {
-        return { ...book, ...hoja1PorISBN[isbn] };
+      const norm = normalizeISBN(isbn);
+      if (norm && hoja1PorISBN[norm]) {
+        return { ...book, ...hoja1PorISBN[norm] };
       }
       return book;
     });
     filtered = [...mergedBooks];
 
-    // Crear categorías por CP
+    // Crear categorías por CP usando ISBN normalizado
     categoriasCP = {};
     hoja1Data.forEach(row => {
-      const cp = row['CP'];
+      const cp = row['CP'] || row['cp'];
       const isbn = row['ISBN'] || row['isbn'];
       if (cp && isbn) {
+        const norm = normalizeISBN(isbn);
         if (!categoriasCP[cp]) categoriasCP[cp] = [];
-        categoriasCP[cp].push(isbn);
+        categoriasCP[cp].push(norm);
       }
     });
 
